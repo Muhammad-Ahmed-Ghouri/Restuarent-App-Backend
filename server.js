@@ -23,6 +23,7 @@ app.use(morgan("dev"));
 // routes
 //URL => http://localhost:8080/
 app.use("/api/v1/test", require("./routes/testRoutes"));
+app.use("/api/v1/auth", require("./routes/authRoutes"));
 
 //routes
 
