@@ -1,5 +1,7 @@
 const { response } = require("express");
 const userModel = require("../models/userModel");
+const bcrypt = require("bcryptjs");
+const JWT = require("jsonwebtoken");
 
 const registerController = async (req, res) => {
   try {
@@ -22,11 +24,15 @@ const registerController = async (req, res) => {
       });
     }
 
+    // hashing password
+    const salt = bcrypt.genSaltSync(10);
+    const hashPassword = await bcrypt.hash(password, salt);
+
     //create new user
     const user = await userModel.create({
       userName,
       email,
-      password,
+      password: hashPassword,
       phone,
       address,
     });
@@ -58,18 +64,36 @@ const loginController = async (req, res) => {
     }
 
     //CheckUser
-    const user = await userModel.findOne({ email: email, password: password });
+    const user = await userModel.findOne({ email });
 
     if (!user) {
-      return res.status(404).send({
+      return res.status(500).send({
         success: false,
-        message: "User Not Found or Password Mismatch",
+        message: "User Not Found",
       });
     }
+
+    // Check User password | Compare password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(500).send({
+        success: false,
+        message: "Invalid Credentials",
+      });
+    }
+
+    // Creating token
+    const token = JWT.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    // Hiding Password
+    user.password = undefined;
 
     res.status(200).send({
       success: true,
       message: "Login Successfully!",
+      token,
       user,
     });
   } catch (error) {
